@@ -1,6 +1,6 @@
 package com.cjm.boot.demo.service.impl;
 
-import com.cjm.boot.demo.dao.AreaDao;
+import com.cjm.boot.demo.mapper.AreaDao;
 import com.cjm.boot.demo.entity.Area;
 import com.cjm.boot.demo.service.AreaService;
 import org.springframework.beans.factory.annotation.Autowired;
