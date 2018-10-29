@@ -11,44 +11,49 @@ import com.cjm.boot.demo.common.status.BaseLogicDeleteStatus;
 import org.apache.ibatis.plugin.Interceptor;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceBuilder;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 
 import javax.sql.DataSource;
 
-//@Configuration
-@MapperScan("com.cjm.boot.demo.mapper*")
-public class MybatisPlusConfig {
-    @Autowired
-    private DataSource dataSource;
+@Configuration
+@MapperScan(basePackages = {"com.cjm.boot.demo.mapper"}, sqlSessionFactoryRef = "mainSqlSessionFactory")
+public class MainDatasourceConfig {
+    @Primary
+    @Bean(name = "mainDataSource")
+    @ConfigurationProperties(prefix = "datasource.main")
+    public DataSource dataSource() {
+        return DataSourceBuilder.create().build();
+    }
 
-    @Bean
-    public SqlSessionFactory sqlSessionFactory() throws Exception {
-        MybatisSqlSessionFactoryBean sqlSessionFactory = new MybatisSqlSessionFactoryBean();
-        sqlSessionFactory.setDataSource(dataSource);
-        // 扫描 com.cjm.boot.demo.mapper xml
-        sqlSessionFactory.setMapperLocations(
-                new PathMatchingResourcePatternResolver().getResources("classpath:/mapper/*Mapper.xml"));
-        // 扫描实体类
-        sqlSessionFactory.setTypeAliasesPackage("com.cjm.boot.demo.entity");
-        // 分页拦截器
-        // PaginationInterceptor pagination = new PaginationInterceptor();
-        // sql性能分析拦截器
-        // SqlExplainInterceptor sqlexplain = new SqlExplainInterceptor();
-        // SQL执行效率插件
-        // PerformanceInterceptor performance = new PerformanceInterceptor();
+    @Primary
+    @Bean(name = "mainTransactionManager")
+    public DataSourceTransactionManager transactionManager(@Qualifier("mainDataSource") DataSource dataSource) {
+        return new DataSourceTransactionManager(dataSource);
+    }
 
-        // performance.setMaxTime(20000);
-        // performance.setFormat(true);
-        // 乐观锁插件
-        // OptimisticLockerInterceptor optimistic = new
-        // OptimisticLockerInterceptor();
-        // 具体参考自己设置，参考 xml 参数说明或源码注释
-        sqlSessionFactory.setPlugins(new Interceptor[] { paginationInterceptor(), optimisticLockerInterceptor() });
-        sqlSessionFactory.setGlobalConfig(this.globalConfiguration());
-        return sqlSessionFactory.getObject();
+    @Primary
+    @Bean(name = "mainSqlSessionFactory")
+    public SqlSessionFactory sqlSessionFactory(@Qualifier("mainDataSource") DataSource dataSource) throws Exception {
+        MybatisSqlSessionFactoryBean factoryBean = new MybatisSqlSessionFactoryBean();
+        factoryBean.setDataSource(dataSource);
+        factoryBean.setMapperLocations(
+                new PathMatchingResourcePatternResolver().getResources("classpath:/com/cjm/boot/demo/mapper/*Mapper.xml"));
+
+
+        factoryBean.setTypeAliasesPackage("com.cjm.boot.demo.entity");
+
+        factoryBean.setPlugins(new Interceptor[] { paginationInterceptor(), optimisticLockerInterceptor() ,sqlExplainInterceptor()});
+//        ,performanceInterceptor()
+        factoryBean.setGlobalConfig(this.globalConfiguration());
+
+        return factoryBean.getObject();
     }
 
 
@@ -56,7 +61,7 @@ public class MybatisPlusConfig {
      * 乐观锁插件
      *
      */
-    @Bean
+
     public OptimisticLockerInterceptor optimisticLockerInterceptor() {
         return new OptimisticLockerInterceptor();
     }
@@ -65,7 +70,7 @@ public class MybatisPlusConfig {
      * sql性能分析拦截器
      *
      */
-    @Bean
+
     public SqlExplainInterceptor sqlExplainInterceptor() {
         return new SqlExplainInterceptor();
     }
@@ -73,7 +78,7 @@ public class MybatisPlusConfig {
     /**
      * 分页插件
      */
-    @Bean
+
     public PaginationInterceptor paginationInterceptor() {
         return new PaginationInterceptor();
     }
@@ -81,7 +86,7 @@ public class MybatisPlusConfig {
     /**
      * SQL执行效率插件
      */
-    @Bean
+
     // @Profile({ "dev", "debug" }) // 设置 dev test 环境开启
     public PerformanceInterceptor performanceInterceptor() {
         PerformanceInterceptor intrceptor = new PerformanceInterceptor();
@@ -89,8 +94,6 @@ public class MybatisPlusConfig {
         intrceptor.setFormat(true);
         return intrceptor;
     }
-
-
 
     /**
      * 设置逻辑删除
